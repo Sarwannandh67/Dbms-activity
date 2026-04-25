@@ -232,6 +232,9 @@ export default function QuizPage() {
     return <ScoreScreen name={name} score={answers.filter((a, i) => a === QUESTIONS[i]?.answer).length} totalTime={totalTime} answers={answers} />
   }
 
+  // Guard: current may briefly exceed array length between state updates
+  if (current >= QUESTIONS.length) return null
+
   const q = QUESTIONS[current]
   const timerColor = timeLeft > 8 ? '#56D364' : timeLeft > 4 ? '#D4A017' : '#E74C3C'
   const dashOffset = CIRC * (1 - timeLeft / TIMER)
