@@ -12,6 +12,14 @@ type Booking = {
   created_at: string
 }
 
+type QuizResult = {
+  id: string
+  user_name: string
+  score: number
+  time_taken: number
+  created_at: string
+}
+
 const PIN = '1234'
 
 export default function AdminPage() {
@@ -28,6 +36,8 @@ export default function AdminPage() {
   const [simCount, setSimCount] = useState(5)
   const [shaking, setShaking] = useState(false)
   const [showOverbook, setShowOverbook] = useState(false)
+  const [quizResults, setQuizResults] = useState<QuizResult[]>([])
+  const [activeTab, setActiveTab] = useState<'bookings' | 'quiz'>('bookings')
   const feedRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -42,15 +52,17 @@ export default function AdminPage() {
     const sb = getClientSupabase()
 
     async function loadInitial() {
-      const [{ data: ticket }, { data: bkgs }] = await Promise.all([
+      const [{ data: ticket }, { data: bkgs }, { data: quiz }] = await Promise.all([
         sb.from('ipl_tickets').select('count, mode').eq('id', 1).single(),
         sb.from('ipl_bookings').select('*').order('created_at', { ascending: false }),
+        sb.from('ipl_quiz_results').select('*').order('score', { ascending: false }).order('time_taken', { ascending: true }),
       ])
       if (ticket) {
         setTicketCount(ticket.count)
         setMode(ticket.mode as 'buggy' | 'locked')
       }
       if (bkgs) setBookings(bkgs)
+      if (quiz) setQuizResults(quiz)
     }
     loadInitial()
 
@@ -85,9 +97,24 @@ export default function AdminPage() {
       })
       .subscribe()
 
+    const quizChannel = sb
+      .channel('admin-quiz')
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'ipl_quiz_results',
+      }, (payload) => {
+        setQuizResults((prev) => {
+          const next = [payload.new as QuizResult, ...prev]
+          return next.sort((a, b) => b.score - a.score || a.time_taken - b.time_taken)
+        })
+      })
+      .subscribe()
+
     return () => {
       sb.removeChannel(ticketChannel)
       sb.removeChannel(bookingChannel)
+      sb.removeChannel(quizChannel)
     }
   }, [authed])
 
@@ -342,74 +369,138 @@ export default function AdminPage() {
             ))}
           </div>
 
-          {/* Booking Feed */}
-          <div className="bg-[#111827] rounded-2xl border border-[#1f2937] overflow-hidden">
-            <div className="px-5 py-4 border-b border-[#1f2937] flex items-center justify-between">
-              <h2 className="text-white font-bold">Live Booking Feed</h2>
-              <span className="flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
-                <span className="text-green-400 text-xs font-medium">LIVE</span>
-              </span>
-            </div>
-
-            <div ref={feedRef} className="overflow-y-auto" style={{ maxHeight: '520px' }}>
-              {bookings.length === 0 ? (
-                <div className="text-center py-16 text-gray-600">
-                  <p className="text-4xl mb-3">📋</p>
-                  <p>No bookings yet. Waiting for students...</p>
-                </div>
-              ) : (
-                <table className="w-full text-sm">
-                  <thead className="bg-[#0A0E1A] sticky top-0">
-                    <tr>
-                      <th className="px-4 py-3 text-left text-gray-500 font-medium">#</th>
-                      <th className="px-4 py-3 text-left text-gray-500 font-medium">Name</th>
-                      <th className="px-4 py-3 text-left text-gray-500 font-medium">Status</th>
-                      <th className="px-4 py-3 text-right text-gray-500 font-medium">Snapshot</th>
-                      <th className="px-4 py-3 text-right text-gray-500 font-medium">Final</th>
-                      <th className="px-4 py-3 text-right text-gray-500 font-medium">Time</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {bookings.map((b, i) => (
-                      <tr
-                        key={b.id}
-                        className={`border-t border-[#1f2937] slide-in ${
-                          b.status === 'success' ? 'hover:bg-green-900/10' : 'hover:bg-red-900/10'
-                        }`}
-                      >
-                        <td className="px-4 py-3 text-gray-600">{bookings.length - i}</td>
-                        <td className="px-4 py-3 text-white font-medium">{b.user_name}</td>
-                        <td className="px-4 py-3">
-                          <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold ${
-                            b.status === 'success'
-                              ? 'bg-green-900/50 text-green-300'
-                              : 'bg-red-900/50 text-red-300'
-                          }`}>
-                            {b.status === 'success' ? '✓ Success' : '✗ Failed'}
-                          </span>
-                        </td>
-                        <td className={`px-4 py-3 text-right font-mono font-bold ${
-                          b.snapshot_count > 0 ? 'text-[#D4A017]' : 'text-red-400'
-                        }`}>
-                          {b.snapshot_count ?? '—'}
-                        </td>
-                        <td className={`px-4 py-3 text-right font-mono font-bold ${
-                          b.final_count < 0 ? 'text-red-500' : b.final_count === 0 ? 'text-yellow-400' : 'text-gray-300'
-                        }`}>
-                          {b.final_count ?? '—'}
-                          {b.final_count < 0 && ' ⚠️'}
-                        </td>
-                        <td className="px-4 py-3 text-right text-gray-600 text-xs">
-                          {new Date(b.created_at).toLocaleTimeString()}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              )}
-            </div>
+          {/* Tab switcher */}
+          <div className="flex gap-2 bg-[#111827] border border-[#1f2937] rounded-xl p-1">
+            {([
+              { key: 'bookings', label: '📋 Live Booking Feed' },
+              { key: 'quiz',     label: `🧠 Quiz Leaderboard ${quizResults.length > 0 ? `(${quizResults.length})` : ''}` },
+            ] as const).map(({ key, label }) => (
+              <button key={key} onClick={() => setActiveTab(key)}
+                className={`flex-1 py-2 px-3 rounded-lg text-sm font-semibold transition-all ${
+                  activeTab === key
+                    ? 'bg-[#0047AB] text-white'
+                    : 'text-gray-500 hover:text-gray-300'
+                }`}>
+                {label}
+              </button>
+            ))}
           </div>
+
+          {/* Booking Feed */}
+          {activeTab === 'bookings' && (
+            <div className="bg-[#111827] rounded-2xl border border-[#1f2937] overflow-hidden">
+              <div className="px-5 py-4 border-b border-[#1f2937] flex items-center justify-between">
+                <h2 className="text-white font-bold">Live Booking Feed</h2>
+                <span className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
+                  <span className="text-green-400 text-xs font-medium">LIVE</span>
+                </span>
+              </div>
+              <div ref={feedRef} className="overflow-y-auto" style={{ maxHeight: '520px' }}>
+                {bookings.length === 0 ? (
+                  <div className="text-center py-16 text-gray-600">
+                    <p className="text-4xl mb-3">📋</p>
+                    <p>No bookings yet. Waiting for students...</p>
+                  </div>
+                ) : (
+                  <table className="w-full text-sm">
+                    <thead className="bg-[#0A0E1A] sticky top-0">
+                      <tr>
+                        <th className="px-4 py-3 text-left text-gray-500 font-medium">#</th>
+                        <th className="px-4 py-3 text-left text-gray-500 font-medium">Name</th>
+                        <th className="px-4 py-3 text-left text-gray-500 font-medium">Status</th>
+                        <th className="px-4 py-3 text-right text-gray-500 font-medium">Snapshot</th>
+                        <th className="px-4 py-3 text-right text-gray-500 font-medium">Final</th>
+                        <th className="px-4 py-3 text-right text-gray-500 font-medium">Time</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {bookings.map((b, i) => (
+                        <tr key={b.id}
+                          className={`border-t border-[#1f2937] slide-in ${
+                            b.status === 'success' ? 'hover:bg-green-900/10' : 'hover:bg-red-900/10'
+                          }`}>
+                          <td className="px-4 py-3 text-gray-600">{bookings.length - i}</td>
+                          <td className="px-4 py-3 text-white font-medium">{b.user_name}</td>
+                          <td className="px-4 py-3">
+                            <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold ${
+                              b.status === 'success' ? 'bg-green-900/50 text-green-300' : 'bg-red-900/50 text-red-300'
+                            }`}>
+                              {b.status === 'success' ? '✓ Success' : '✗ Failed'}
+                            </span>
+                          </td>
+                          <td className={`px-4 py-3 text-right font-mono font-bold ${b.snapshot_count > 0 ? 'text-[#D4A017]' : 'text-red-400'}`}>
+                            {b.snapshot_count ?? '—'}
+                          </td>
+                          <td className={`px-4 py-3 text-right font-mono font-bold ${
+                            b.final_count < 0 ? 'text-red-500' : b.final_count === 0 ? 'text-yellow-400' : 'text-gray-300'
+                          }`}>
+                            {b.final_count ?? '—'}{b.final_count < 0 && ' ⚠️'}
+                          </td>
+                          <td className="px-4 py-3 text-right text-gray-600 text-xs">
+                            {new Date(b.created_at).toLocaleTimeString()}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Quiz Leaderboard */}
+          {activeTab === 'quiz' && (
+            <div className="bg-[#111827] rounded-2xl border border-[#1f2937] overflow-hidden">
+              <div className="px-5 py-4 border-b border-[#1f2937] flex items-center justify-between">
+                <h2 className="text-white font-bold">Quiz Leaderboard</h2>
+                <span className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
+                  <span className="text-green-400 text-xs font-medium">LIVE</span>
+                </span>
+              </div>
+              <div className="overflow-y-auto" style={{ maxHeight: '520px' }}>
+                {quizResults.length === 0 ? (
+                  <div className="text-center py-16 text-gray-600">
+                    <p className="text-4xl mb-3">🧠</p>
+                    <p>No quiz results yet.</p>
+                    <p className="text-xs mt-2">Share <span className="text-gray-400 font-mono">/quiz</span> with students</p>
+                  </div>
+                ) : (
+                  <table className="w-full text-sm">
+                    <thead className="bg-[#0A0E1A] sticky top-0">
+                      <tr>
+                        <th className="px-4 py-3 text-left text-gray-500 font-medium">Rank</th>
+                        <th className="px-4 py-3 text-left text-gray-500 font-medium">Name</th>
+                        <th className="px-4 py-3 text-center text-gray-500 font-medium">Score</th>
+                        <th className="px-4 py-3 text-center text-gray-500 font-medium">Time</th>
+                        <th className="px-4 py-3 text-right text-gray-500 font-medium">Verdict</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {quizResults.map((r, i) => {
+                        const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i + 1}`
+                        const scoreColor = r.score === 5 ? 'text-green-400' : r.score >= 4 ? 'text-blue-400' : r.score >= 2 ? 'text-yellow-400' : 'text-red-400'
+                        const verdict = r.score <= 1 ? 'Were you even there?' : r.score <= 3 ? 'Saw the bug, missed the fix' : r.score === 4 ? 'Solid — one slip' : 'Better than most devs'
+                        return (
+                          <tr key={r.id} className={`border-t border-[#1f2937] slide-in ${i < 3 ? 'hover:bg-[#D4A017]/5' : 'hover:bg-white/5'}`}>
+                            <td className="px-4 py-3 text-center font-bold text-lg">{medal}</td>
+                            <td className="px-4 py-3 text-white font-medium">{r.user_name}</td>
+                            <td className="px-4 py-3 text-center">
+                              <span className={`font-black text-lg ${scoreColor}`}>{r.score}</span>
+                              <span className="text-gray-600 text-xs">/5</span>
+                            </td>
+                            <td className="px-4 py-3 text-center text-gray-400 text-xs font-mono">{r.time_taken}s</td>
+                            <td className="px-4 py-3 text-right text-gray-500 text-xs">{verdict}</td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* Teaching note */}
           <div className="bg-[#0047AB]/10 border border-[#0047AB]/30 rounded-xl px-5 py-4">

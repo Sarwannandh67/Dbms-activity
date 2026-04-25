@@ -522,6 +522,22 @@ export default function ExplainPage() {
           </FadeIn>
         </section>
 
+        {/* ════════════════ QUIZ CTA ════════════════ */}
+        <section className="pt-4 pb-8">
+          <FadeIn>
+            <div className="rounded-2xl border-2 border-[#D4A017]/40 bg-[#D4A017]/5 p-8 sm:p-12 text-center">
+              <div className="text-4xl mb-4">🧠</div>
+              <h2 className="text-2xl sm:text-3xl font-black text-white mb-3">Think you got it?</h2>
+              <p className="text-white/40 mb-8">5 questions. 15 seconds each. Based on exactly what you just saw.</p>
+              <Link href="/quiz"
+                className="inline-flex items-center gap-2 px-8 py-4 rounded-xl font-black text-lg text-white transition-all"
+                style={{ background: 'linear-gradient(135deg,#0047AB,#0063cc)', border: '2px solid #D4A017' }}>
+                Take the Quiz →
+              </Link>
+            </div>
+          </FadeIn>
+        </section>
+
       </div>
 
       {/* ── Fixed bottom buttons ── */}
