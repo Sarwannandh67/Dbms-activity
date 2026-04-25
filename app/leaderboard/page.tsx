@@ -89,7 +89,7 @@ export default function LeaderboardPage() {
     <div className="min-h-screen bg-[#0A0E1A] text-white flex flex-col">
 
       {/* Header */}
-      <div className="sticky top-0 z-20 bg-[#0A0E1A]/95 backdrop-blur-md border-b border-white/5 px-5 py-4">
+      <div className="px-5 py-5">
         <div className="max-w-2xl mx-auto flex items-center justify-between">
           <div>
             <h1 className="text-xl font-black tracking-tight">🧠 Quiz Leaderboard</h1>
@@ -97,15 +97,9 @@ export default function LeaderboardPage() {
               {results.length} participant{results.length !== 1 ? 's' : ''} · sorted by score, then time
             </p>
           </div>
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
-              <span className="text-green-400 text-xs font-semibold">LIVE</span>
-            </div>
-            <Link href="/quiz"
-              className="text-xs text-white/40 hover:text-white/70 transition-colors border border-white/10 px-3 py-1.5 rounded-full">
-              Take Quiz →
-            </Link>
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
+            <span className="text-green-400 text-xs font-semibold">LIVE</span>
           </div>
         </div>
       </div>

@@ -232,18 +232,17 @@ export default function ExplainPage() {
   return (
     <div className="min-h-screen bg-[#0A0E1A] text-white">
 
-      {/* ── Top nav ── */}
-      <nav className="sticky top-0 z-50 bg-[#0A0E1A]/90 backdrop-blur-md border-b border-white/5">
-        <div className="max-w-5xl mx-auto px-4 flex items-center gap-1 overflow-x-auto py-3 scrollbar-hide">
-          <Link href="/" className="text-[#D4A017] font-bold text-sm mr-4 flex-shrink-0">🏏 IPL Demo</Link>
+      {/* ── Section jump sub-nav ── */}
+      <div className="bg-[#0A0E1A]/80 backdrop-blur-sm border-b border-white/5 px-4 overflow-x-auto scrollbar-hide">
+        <div className="max-w-5xl mx-auto flex items-center gap-1 py-2">
           {sections.map((s, i) => (
             <a key={s} href={`#s${i + 1}`}
-              className="flex-shrink-0 px-3 py-1 rounded-full text-xs text-white/50 hover:text-white hover:bg-white/10 transition-colors whitespace-nowrap">
+              className="flex-shrink-0 px-3 py-1 rounded-full text-xs text-white/40 hover:text-white hover:bg-white/10 transition-colors whitespace-nowrap">
               {s}
             </a>
           ))}
         </div>
-      </nav>
+      </div>
 
       {/* ── Page content ── */}
       <div className="max-w-4xl mx-auto px-4 sm:px-6 pb-32 pt-12 space-y-0">
