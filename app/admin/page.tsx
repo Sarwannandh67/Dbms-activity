@@ -39,6 +39,8 @@ export default function AdminPage() {
   const [quizResults, setQuizResults] = useState<QuizResult[]>([])
   const [activeTab, setActiveTab] = useState<'bookings' | 'quiz'>('bookings')
   const [clearingQuiz, setClearingQuiz] = useState(false)
+  const [qrRevealed, setQrRevealed] = useState(false)
+  const [togglingQR, setTogglingQR] = useState(false)
   const feedRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -54,13 +56,14 @@ export default function AdminPage() {
 
     async function loadInitial() {
       const [{ data: ticket }, { data: bkgs }, { data: quiz }] = await Promise.all([
-        sb.from('ipl_tickets').select('count, mode').eq('id', 1).single(),
+        sb.from('ipl_tickets').select('count, mode, qr_revealed').eq('id', 1).single(),
         sb.from('ipl_bookings').select('*').order('created_at', { ascending: false }),
         sb.from('ipl_quiz_results').select('*').order('score', { ascending: false }).order('time_taken', { ascending: true }),
       ])
       if (ticket) {
         setTicketCount(ticket.count)
         setMode(ticket.mode as 'buggy' | 'locked')
+        setQrRevealed(ticket.qr_revealed ?? false)
       }
       if (bkgs) setBookings(bkgs)
       if (quiz) setQuizResults(quiz)
@@ -77,6 +80,7 @@ export default function AdminPage() {
         const newCount = payload.new.count
         setTicketCount(newCount)
         setMode(payload.new.mode)
+        if (payload.new.qr_revealed !== undefined) setQrRevealed(payload.new.qr_revealed)
         if (newCount < 0) {
           setShaking(true)
           setShowOverbook(true)
@@ -180,6 +184,21 @@ export default function AdminPage() {
       setQuizResults([])
     } finally {
       setClearingQuiz(false)
+    }
+  }
+
+  async function handleToggleQR() {
+    setTogglingQR(true)
+    const next = !qrRevealed
+    try {
+      await fetch('/api/qr-reveal', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ revealed: next }),
+      })
+      setQrRevealed(next)
+    } finally {
+      setTogglingQR(false)
     }
   }
 
@@ -373,6 +392,37 @@ export default function AdminPage() {
               style={{ background: 'linear-gradient(135deg,#0047AB,#0063cc)', border: '2px solid #D4A017' }}>
               Open Leaderboard ↗
             </a>
+          </div>
+
+          {/* QR Reveal Toggle */}
+          <div className="bg-[#111827] rounded-2xl p-5 border border-[#1f2937]">
+            <p className="text-gray-400 text-xs font-semibold uppercase tracking-widest mb-3">
+              QR Code Visibility
+            </p>
+            <div className={`rounded-xl px-4 py-3 mb-4 flex items-center gap-3 ${
+              qrRevealed ? 'bg-green-900/30 border border-green-700' : 'bg-red-900/30 border border-red-700'
+            }`}>
+              <span className={`w-3 h-3 rounded-full flex-shrink-0 ${qrRevealed ? 'bg-green-400' : 'bg-red-400'}`} />
+              <div>
+                <p className={`font-bold text-sm ${qrRevealed ? 'text-green-300' : 'text-red-300'}`}>
+                  {qrRevealed ? '🔓 QR Codes Visible' : '🔒 QR Codes Hidden'}
+                </p>
+                <p className="text-gray-500 text-xs mt-0.5">
+                  {qrRevealed ? 'Students can scan on /qr page' : 'Blurred on /qr — reveal when ready'}
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={handleToggleQR}
+              disabled={togglingQR}
+              className={`w-full py-3 rounded-xl font-bold text-sm transition-all ${
+                qrRevealed
+                  ? 'bg-red-800 hover:bg-red-700 text-white'
+                  : 'bg-green-700 hover:bg-green-600 text-white'
+              } disabled:opacity-50`}
+            >
+              {togglingQR ? '...' : qrRevealed ? '🔒 Hide QR Codes' : '🔓 Reveal QR Codes'}
+            </button>
           </div>
         </div>
 
