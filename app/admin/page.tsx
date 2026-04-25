@@ -38,6 +38,7 @@ export default function AdminPage() {
   const [showOverbook, setShowOverbook] = useState(false)
   const [quizResults, setQuizResults] = useState<QuizResult[]>([])
   const [activeTab, setActiveTab] = useState<'bookings' | 'quiz'>('bookings')
+  const [clearingQuiz, setClearingQuiz] = useState(false)
   const feedRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -170,6 +171,16 @@ export default function AdminPage() {
     // Fire all simultaneously — this is what triggers the race condition
     await Promise.allSettled(requests)
     setSimulating(false)
+  }
+
+  async function handleClearQuiz() {
+    setClearingQuiz(true)
+    try {
+      await fetch('/api/clear-quiz', { method: 'POST' })
+      setQuizResults([])
+    } finally {
+      setClearingQuiz(false)
+    }
   }
 
   const successCount = bookings.filter((b) => b.status === 'success').length
@@ -467,10 +478,19 @@ export default function AdminPage() {
             <div className="bg-[#111827] rounded-2xl border border-[#1f2937] overflow-hidden">
               <div className="px-5 py-4 border-b border-[#1f2937] flex items-center justify-between">
                 <h2 className="text-white font-bold">Quiz Leaderboard</h2>
-                <span className="flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
-                  <span className="text-green-400 text-xs font-medium">LIVE</span>
-                </span>
+                <div className="flex items-center gap-3">
+                  <span className="flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
+                    <span className="text-green-400 text-xs font-medium">LIVE</span>
+                  </span>
+                  <button
+                    onClick={handleClearQuiz}
+                    disabled={clearingQuiz || quizResults.length === 0}
+                    className="px-3 py-1 rounded-lg bg-red-900/40 hover:bg-red-900/70 text-red-400 text-xs font-semibold border border-red-800/50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    {clearingQuiz ? 'Clearing...' : 'Clear'}
+                  </button>
+                </div>
               </div>
               <div className="overflow-y-auto" style={{ maxHeight: '520px' }}>
                 {quizResults.length === 0 ? (
