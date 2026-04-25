@@ -42,10 +42,11 @@ const QUESTIONS = [
 ]
 
 const VERDICTS = [
-  { max: 1, emoji: '😶', text: 'Were you even there?',                                    color: 'text-red-400',    border: 'border-red-700',   bg: 'bg-red-900/30'    },
-  { max: 3, emoji: '🤔', text: 'You saw the bug but missed the fix',                       color: 'text-yellow-400', border: 'border-yellow-700', bg: 'bg-yellow-900/20' },
-  { max: 4, emoji: '💪', text: 'Solid — one slip',                                         color: 'text-blue-400',   border: 'border-blue-700',   bg: 'bg-blue-900/20'   },
-  { max: 5, emoji: '🏆', text: 'You understood it better than most devs in production',    color: 'text-green-400',  border: 'border-green-700',  bg: 'bg-green-900/20'  },
+  { max: 0, emoji: '💀', text: 'Were you even there?',                                    color: 'text-red-400',    border: 'border-red-700',   bg: 'bg-red-900/30',    meme: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcT7wrn1RSdMlOPf6v7zjFOpKmisvf3BT_60WQ&s',        memeAlt: 'zero score meme'    },
+  { max: 2, emoji: '😶', text: 'You saw the bug but missed the fix',                      color: 'text-red-400',    border: 'border-red-700',   bg: 'bg-red-900/30',    meme: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQHGAciZNIocYwc6ubew0LAqaHnAiUb78Hm9A&s',        memeAlt: 'below 3 meme'       },
+  { max: 3, emoji: '🤔', text: 'You saw the bug but missed the fix',                      color: 'text-yellow-400', border: 'border-yellow-700', bg: 'bg-yellow-900/20', meme: null,                                                                                                        memeAlt: ''                   },
+  { max: 4, emoji: '💪', text: 'Solid — one slip',                                        color: 'text-blue-400',   border: 'border-blue-700',   bg: 'bg-blue-900/20',   meme: 'https://indianmemetemplates.com/wp-content/uploads/virat-kohli-big-eyes-meme.jpg',                       memeAlt: 'Virat Kohli big eyes'},
+  { max: 5, emoji: '🏆', text: 'You understood it better than most devs in production',   color: 'text-green-400',  border: 'border-green-700',  bg: 'bg-green-900/20',  meme: 'https://pbs.twimg.com/profile_images/1444531096171937792/p55TsT3F_400x400.jpg',                          memeAlt: 'perfect score meme' },
 ]
 
 /* ── Name screen ── */
@@ -113,8 +114,18 @@ function ScoreScreen({ name, score, totalTime, answers }: {
     <div className="min-h-screen bg-[#0A0E1A] flex flex-col items-center justify-center p-6">
       <div className="w-full max-w-sm">
         {/* Score card */}
-        <div className={`rounded-2xl border-2 p-8 text-center mb-6 ${verdict.bg} ${verdict.border}`}>
-          <div className="text-5xl mb-3">{verdict.emoji}</div>
+        <div className={`rounded-2xl border-2 p-6 text-center mb-6 ${verdict.bg} ${verdict.border}`}>
+          {/* Meme image */}
+          {verdict.meme && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={verdict.meme}
+              alt={verdict.memeAlt}
+              className="w-36 h-36 object-cover rounded-2xl mx-auto mb-4 border-2 border-white/20 shadow-xl"
+              onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
+            />
+          )}
+          {!verdict.meme && <div className="text-5xl mb-3">{verdict.emoji}</div>}
           <p className="text-white/40 text-sm mb-1">{name}</p>
           <div className="text-7xl font-black text-white mb-1">{score}<span className="text-3xl text-white/30">/5</span></div>
           <p className={`text-lg font-bold mt-3 ${verdict.color}`}>{verdict.text}</p>
