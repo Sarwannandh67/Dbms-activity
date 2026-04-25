@@ -10,7 +10,28 @@
   }
 }
 
-/* Utility classes that map to our custom Tailwind animations */
 .shake { animation: shake 0.6s ease-in-out; }
 .fade-in-up { animation: fade-in-up 0.4s ease-out forwards; }
 .slide-in { animation: slide-in 0.3s ease-out forwards; }
+
+@keyframes shimmer-gold {
+  0%   { background-position: -200% center; }
+  100% { background-position:  200% center; }
+}
+.shimmer-gold {
+  background: linear-gradient(
+    90deg,
+    rgba(212,160,23,0.08) 0%,
+    rgba(212,160,23,0.22) 40%,
+    rgba(212,160,23,0.08) 60%,
+    rgba(212,160,23,0.04) 100%
+  );
+  background-size: 200% auto;
+  animation: shimmer-gold 3s linear infinite;
+}
+
+@keyframes slide-in-row {
+  from { opacity: 0; transform: translateY(-12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.new-row { animation: slide-in-row 0.5s ease-out forwards; }

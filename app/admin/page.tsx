@@ -350,6 +350,19 @@ export default function AdminPage() {
             </div>
             <p className="text-gray-600 text-xs mt-2 text-center">Share this URL with students</p>
           </div>
+
+          {/* Leaderboard pin */}
+          <div className="bg-[#111827] rounded-2xl p-5 border border-[#D4A017]/20">
+            <p className="text-[#D4A017] text-xs font-semibold uppercase tracking-widest mb-3">
+              🏆 Live Leaderboard
+            </p>
+            <p className="text-gray-500 text-xs mb-3">Project this after the quiz — updates in realtime as students submit.</p>
+            <a href="/leaderboard" target="_blank" rel="noopener noreferrer"
+              className="w-full py-3 rounded-xl font-bold text-sm text-white text-center block transition-all hover:opacity-90"
+              style={{ background: 'linear-gradient(135deg,#0047AB,#0063cc)', border: '2px solid #D4A017' }}>
+              Open Leaderboard ↗
+            </a>
+          </div>
         </div>
 
         {/* RIGHT PANEL */}

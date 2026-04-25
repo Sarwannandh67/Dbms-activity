@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { getClientSupabase } from '@/lib/supabase'
 
 const TIMER = 15
@@ -89,15 +90,24 @@ function ScoreScreen({ name, score, totalTime, answers }: {
   name: string; score: number; totalTime: number; answers: (number | null)[]
 }) {
   const verdict = VERDICTS.find(v => score <= v.max) ?? VERDICTS[VERDICTS.length - 1]
+  const router = useRouter()
+  const [countdown, setCountdown] = useState(5)
 
   // Save result once on mount
   useEffect(() => {
     getClientSupabase()
       .from('ipl_quiz_results')
       .insert({ user_name: name, score, time_taken: totalTime })
-      .then(() => {}) // silent — result already shown to user
+      .then(() => {})
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  // 5-second countdown then redirect to leaderboard
+  useEffect(() => {
+    if (countdown <= 0) { router.push('/leaderboard'); return }
+    const t = setTimeout(() => setCountdown(p => p - 1), 1000)
+    return () => clearTimeout(t)
+  }, [countdown, router])
 
   return (
     <div className="min-h-screen bg-[#0A0E1A] flex flex-col items-center justify-center p-6">
@@ -121,7 +131,7 @@ function ScoreScreen({ name, score, totalTime, answers }: {
             const correct = chose === q.answer
             const timeout = chose === null
             return (
-              <div key={i} className={`px-5 py-3 border-b border-[#1f2937] last:border-0 flex items-start gap-3`}>
+              <div key={i} className="px-5 py-3 border-b border-[#1f2937] last:border-0 flex items-start gap-3">
                 <span className={`flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold mt-0.5 ${
                   correct ? 'bg-green-500 text-white' : 'bg-red-500 text-white'
                 }`}>
@@ -129,22 +139,26 @@ function ScoreScreen({ name, score, totalTime, answers }: {
                 </span>
                 <div className="flex-1 min-w-0">
                   <p className="text-white/70 text-xs leading-snug mb-1">{q.q}</p>
-                  {!correct && (
-                    <p className="text-green-400 text-xs">
-                      ✓ {q.options[q.answer]}
-                    </p>
-                  )}
+                  {!correct && <p className="text-green-400 text-xs">✓ {q.options[q.answer]}</p>}
                   {timeout && <p className="text-red-400 text-xs">⏱ Time ran out</p>}
-                  {!correct && !timeout && (
-                    <p className="text-red-400 text-xs">You chose: {q.options[chose!]}</p>
-                  )}
+                  {!correct && !timeout && <p className="text-red-400 text-xs">You chose: {q.options[chose!]}</p>}
                 </div>
               </div>
             )
           })}
         </div>
 
-        {/* Actions */}
+        {/* Leaderboard CTA with countdown */}
+        <Link href="/leaderboard"
+          className="w-full flex items-center justify-between px-5 py-4 rounded-xl font-bold text-white mb-3 transition-all"
+          style={{ background: 'linear-gradient(135deg,#0047AB,#0063cc)', border: '2px solid #D4A017' }}>
+          <span>🏆 See Live Leaderboard</span>
+          <span className="bg-white/20 rounded-full w-8 h-8 flex items-center justify-center text-sm font-black">
+            {countdown}
+          </span>
+        </Link>
+
+        {/* Secondary actions */}
         <div className="flex gap-3">
           <button
             onClick={() => window.location.reload()}
@@ -153,9 +167,8 @@ function ScoreScreen({ name, score, totalTime, answers }: {
             Try Again
           </button>
           <Link href="/"
-            className="flex-1 py-3 rounded-xl font-bold text-sm text-white text-center transition-all"
-            style={{ background: 'linear-gradient(135deg,#0047AB,#0063cc)', border: '2px solid #D4A017' }}>
-            Book a Ticket →
+            className="flex-1 py-3 rounded-xl text-white/60 font-semibold text-sm text-center border border-[#1f2937] bg-[#111827] hover:bg-[#1f2937] transition-colors">
+            Book Ticket
           </Link>
         </div>
       </div>
