@@ -39,8 +39,8 @@ export default function AdminPage() {
   const [quizResults, setQuizResults] = useState<QuizResult[]>([])
   const [activeTab, setActiveTab] = useState<'bookings' | 'quiz'>('bookings')
   const [clearingQuiz, setClearingQuiz] = useState(false)
-  const [qrRevealed, setQrRevealed] = useState(false)
-  const [togglingQR, setTogglingQR] = useState(false)
+  const [qrRevealed, setQrRevealed] = useState<[boolean, boolean, boolean]>([false, false, false])
+  const [togglingQR, setTogglingQR] = useState<[boolean, boolean, boolean]>([false, false, false])
   const feedRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -56,14 +56,18 @@ export default function AdminPage() {
 
     async function loadInitial() {
       const [{ data: ticket }, { data: bkgs }, { data: quiz }] = await Promise.all([
-        sb.from('ipl_tickets').select('count, mode, qr_revealed').eq('id', 1).single(),
+        sb.from('ipl_tickets').select('count, mode, qr_booking_revealed, qr_explain_revealed, qr_quiz_revealed').eq('id', 1).single(),
         sb.from('ipl_bookings').select('*').order('created_at', { ascending: false }),
         sb.from('ipl_quiz_results').select('*').order('score', { ascending: false }).order('time_taken', { ascending: true }),
       ])
       if (ticket) {
         setTicketCount(ticket.count)
         setMode(ticket.mode as 'buggy' | 'locked')
-        setQrRevealed(ticket.qr_revealed ?? false)
+        setQrRevealed([
+          ticket.qr_booking_revealed ?? false,
+          ticket.qr_explain_revealed ?? false,
+          ticket.qr_quiz_revealed ?? false,
+        ])
       }
       if (bkgs) setBookings(bkgs)
       if (quiz) setQuizResults(quiz)
@@ -80,7 +84,11 @@ export default function AdminPage() {
         const newCount = payload.new.count
         setTicketCount(newCount)
         setMode(payload.new.mode)
-        if (payload.new.qr_revealed !== undefined) setQrRevealed(payload.new.qr_revealed)
+        setQrRevealed([
+          payload.new.qr_booking_revealed ?? false,
+          payload.new.qr_explain_revealed ?? false,
+          payload.new.qr_quiz_revealed ?? false,
+        ])
         if (newCount < 0) {
           setShaking(true)
           setShowOverbook(true)
@@ -187,18 +195,18 @@ export default function AdminPage() {
     }
   }
 
-  async function handleToggleQR() {
-    setTogglingQR(true)
-    const next = !qrRevealed
+  async function handleToggleQR(index: 0 | 1 | 2) {
+    const next = !qrRevealed[index]
+    setTogglingQR(prev => { const t = [...prev] as [boolean,boolean,boolean]; t[index] = true; return t })
     try {
       await fetch('/api/qr-reveal', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ revealed: next }),
+        body: JSON.stringify({ index, revealed: next }),
       })
-      setQrRevealed(next)
+      setQrRevealed(prev => { const r = [...prev] as [boolean,boolean,boolean]; r[index] = next; return r })
     } finally {
-      setTogglingQR(false)
+      setTogglingQR(prev => { const t = [...prev] as [boolean,boolean,boolean]; t[index] = false; return t })
     }
   }
 
@@ -394,35 +402,37 @@ export default function AdminPage() {
             </a>
           </div>
 
-          {/* QR Reveal Toggle */}
+          {/* QR Reveal Toggles */}
           <div className="bg-[#111827] rounded-2xl p-5 border border-[#1f2937]">
             <p className="text-gray-400 text-xs font-semibold uppercase tracking-widest mb-3">
               QR Code Visibility
             </p>
-            <div className={`rounded-xl px-4 py-3 mb-4 flex items-center gap-3 ${
-              qrRevealed ? 'bg-green-900/30 border border-green-700' : 'bg-red-900/30 border border-red-700'
-            }`}>
-              <span className={`w-3 h-3 rounded-full flex-shrink-0 ${qrRevealed ? 'bg-green-400' : 'bg-red-400'}`} />
-              <div>
-                <p className={`font-bold text-sm ${qrRevealed ? 'text-green-300' : 'text-red-300'}`}>
-                  {qrRevealed ? '🔓 QR Codes Visible' : '🔒 QR Codes Hidden'}
-                </p>
-                <p className="text-gray-500 text-xs mt-0.5">
-                  {qrRevealed ? 'Students can scan on /qr page' : 'Blurred on /qr — reveal when ready'}
-                </p>
-              </div>
+            <div className="space-y-2">
+              {(['🎟️ Booking', '📖 Explainer', '🧠 Quiz'] as const).map((label, i) => {
+                const on = qrRevealed[i as 0|1|2]
+                return (
+                  <div key={i} className={`flex items-center justify-between rounded-xl px-4 py-3 border ${
+                    on ? 'bg-green-900/20 border-green-800' : 'bg-[#0A0E1A] border-[#1f2937]'
+                  }`}>
+                    <div className="flex items-center gap-2">
+                      <span className={`w-2 h-2 rounded-full ${on ? 'bg-green-400' : 'bg-red-500'}`} />
+                      <span className={`text-sm font-semibold ${on ? 'text-green-300' : 'text-gray-400'}`}>{label}</span>
+                    </div>
+                    <button
+                      onClick={() => handleToggleQR(i as 0|1|2)}
+                      disabled={togglingQR[i as 0|1|2]}
+                      className={`px-3 py-1 rounded-lg text-xs font-bold transition-all disabled:opacity-50 ${
+                        on
+                          ? 'bg-red-800 hover:bg-red-700 text-white'
+                          : 'bg-green-700 hover:bg-green-600 text-white'
+                      }`}
+                    >
+                      {togglingQR[i as 0|1|2] ? '...' : on ? '🔒 Hide' : '🔓 Reveal'}
+                    </button>
+                  </div>
+                )
+              })}
             </div>
-            <button
-              onClick={handleToggleQR}
-              disabled={togglingQR}
-              className={`w-full py-3 rounded-xl font-bold text-sm transition-all ${
-                qrRevealed
-                  ? 'bg-red-800 hover:bg-red-700 text-white'
-                  : 'bg-green-700 hover:bg-green-600 text-white'
-              } disabled:opacity-50`}
-            >
-              {togglingQR ? '...' : qrRevealed ? '🔒 Hide QR Codes' : '🔓 Reveal QR Codes'}
-            </button>
           </div>
         </div>
 
