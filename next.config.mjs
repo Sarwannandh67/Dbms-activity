@@ -7,6 +7,7 @@ const nextConfig = {
       { protocol: 'https', hostname: 'documents.iplt20.com' },
       { protocol: 'https', hostname: 'pbs.twimg.com' },
       { protocol: 'https', hostname: 'indianmemetemplates.com' },
+      { protocol: 'https', hostname: 'media.tenor.com' },
     ],
   },
 }
